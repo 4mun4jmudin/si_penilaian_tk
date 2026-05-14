@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Kivy
+.kivy/
+*.kvc
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database (optional, usually you don't want to push local db if any)
+*.db
+*.sqlite
+
+# Assets upload (local dev)
+uploads/
+assets/guru/
+assets/siswa/
