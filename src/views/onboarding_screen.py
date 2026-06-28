@@ -140,8 +140,16 @@ class OnboardingScreen(Screen):
         self.finish_onboarding()
 
     def finish_onboarding(self):
-        store = JsonStore('app_config.json')
-        store.put('onboarding', completed=True)
+        import os
+        from kivy.app import App
+        
+        app = App.get_running_app()
+        if app:
+            data_dir = app.user_data_dir
+            path_json = os.path.join(data_dir, 'app_config.json')
+            store = JsonStore(path_json)
+            store.put('onboarding', completed=True)
+            
         self.manager.transition.direction = 'left'
         self.manager.current = 'login'
 

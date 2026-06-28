@@ -39,13 +39,27 @@ KV = '''
 Builder.load_string(KV)
 
 class SplashScreen(Screen):
-    def on_enter(self):
+    def on_enter(self, *args):
         # Timer: Pindah ke layar berikutnya setelah 3 detik
-        Clock.schedule_once(self.check_onboarding_status, 3)
+        self.timer = Clock.schedule_once(self.check_onboarding_status, 3)
+
+    def on_leave(self, *args):
+        # Batalkan timer jika pindah layar sebelum 3 detik
+        if hasattr(self, 'timer'):
+            self.timer.cancel()
 
     def check_onboarding_status(self, dt):
         # Cek penyimpanan lokal apakah user sudah pernah buka aplikasi
-        store = JsonStore('app_config.json')
+        import os
+        from kivy.app import App
+        
+        app = App.get_running_app()
+        if app is None:
+            return  # Aplikasi sudah ditutup, batalkan proses
+            
+        data_dir = app.user_data_dir
+        path_json = os.path.join(data_dir, 'app_config.json')
+        store = JsonStore(path_json)
         
         if store.exists('onboarding'):
             if store.get('onboarding')['completed']:

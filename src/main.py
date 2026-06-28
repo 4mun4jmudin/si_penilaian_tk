@@ -44,6 +44,7 @@ class TKPenilaianApp(MDApp):
         self.theme_cls.theme_style = "Light"      # Mode terang
         
         # Ukuran Window simulasi HP (Hapus baris ini saat deploy ke Android asli)
+        # pyrefly: ignore [missing-attribute]
         Window.size = (360, 640) 
         
         # Inisialisasi Screen Manager

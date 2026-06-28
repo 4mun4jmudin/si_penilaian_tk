@@ -1,10 +1,18 @@
+# pyrefly: ignore [missing-import]
 from kivymd.app import MDApp
+# pyrefly: ignore [missing-import]
 from kivy.lang import Builder
+# pyrefly: ignore [missing-import]
 from kivy.uix.screenmanager import ScreenManager, Screen
+# pyrefly: ignore [missing-import]
 from kivy.clock import Clock
+# pyrefly: ignore [missing-import]
 from kivy.core.window import Window
+# pyrefly: ignore [missing-import]
 from kivy.storage.jsonstore import JsonStore
+# pyrefly: ignore [missing-import]
 from kivymd.uix.label import MDLabel
+# pyrefly: ignore [missing-import]
 from kivymd.uix.card import MDCard
 
 # --- KV LANGUAGE (Desain UI) ---
@@ -433,13 +441,27 @@ ScreenManager:
 # --- LOGIC PYTHON ---
 
 class SplashScreen(Screen):
-    def on_enter(self):
+    def on_enter(self, *args):
         # Timer: Pindah ke layar berikutnya setelah 3 detik
-        Clock.schedule_once(self.check_onboarding_status, 3)
+        self.timer = Clock.schedule_once(self.check_onboarding_status, 3)
+
+    def on_leave(self, *args):
+        # Batalkan timer jika pindah layar sebelum 3 detik
+        if hasattr(self, 'timer'):
+            self.timer.cancel()
 
     def check_onboarding_status(self, dt):
         # Cek penyimpanan lokal apakah user sudah pernah buka aplikasi
-        store = JsonStore('app_config.json')
+        import os
+        from kivy.app import App
+        
+        app = App.get_running_app()
+        if app is None:
+            return  # Aplikasi sudah ditutup, batalkan proses
+            
+        data_dir = app.user_data_dir
+        path_json = os.path.join(data_dir, 'app_config.json')
+        store = JsonStore(path_json)
         
         if store.exists('onboarding'):
             if store.get('onboarding')['completed']:
@@ -462,8 +484,16 @@ class OnboardingScreen(Screen):
         self.finish_onboarding()
 
     def finish_onboarding(self):
-        store = JsonStore('app_config.json')
-        store.put('onboarding', completed=True)
+        import os
+        from kivy.app import App
+        
+        app = App.get_running_app()
+        if app is not None:
+            data_dir = app.user_data_dir
+            path_json = os.path.join(data_dir, 'app_config.json')
+            store = JsonStore(path_json)
+            store.put('onboarding', completed=True)
+            
         self.manager.transition.direction = 'left'
         self.manager.current = 'login'
 
@@ -533,7 +563,8 @@ class TKPenilaianApp(MDApp):
     def build(self):
         self.theme_cls.primary_palette = "Green"
         self.theme_cls.theme_style = "Light"
-        Window.size = (360, 640) 
+        if Window:
+            Window.size = (360, 640) 
         return Builder.load_string(KV)
 
 if __name__ == '__main__':

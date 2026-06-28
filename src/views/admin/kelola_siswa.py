@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from kivy.lang import Builder
 from kivy.uix.screenmanager import Screen
 from kivymd.uix.dialog import MDDialog
