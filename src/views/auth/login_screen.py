@@ -62,6 +62,7 @@ KV = '''
 
         # --- Tombol Login Utama ---
         MDFillRoundFlatButton:
+            id: btn_login
             text: "MASUK"
             pos_hint: {"center_x": .5, "center_y": .28}
             size_hint_x: .85
@@ -69,21 +70,6 @@ KV = '''
             font_size: "18sp"
             on_release: root.do_login()
 
-        # --- Opsi Login Lain ---
-        MDLabel:
-            text: "atau"
-            halign: "center"
-            pos_hint: {"center_y": .20}
-            font_style: "Caption"
-            theme_text_color: "Hint"
-
-        MDTextButton:
-            text: "Login Sebagai Orang Tua"
-            pos_hint: {"center_x": .5, "center_y": .15}
-            theme_text_color: "Custom"
-            text_color: 0, 0.5, 0, 1
-            bold: True
-            on_release: root.login_as_parent()
 '''
 
 Builder.load_string(KV)
@@ -112,20 +98,61 @@ class LoginScreen(Screen):
             toast("Harap isi Username dan Password!")
             return
 
-        # Autentikasi via Model
-        user = UserModel.authenticate(username, password)
-        
+        # Nonaktifkan tombol login agar tidak bisa ditekan berkali-kali
+        self.ids.btn_login.disabled = True
+        self.ids.btn_login.text = "MENGHUBUNGKAN..."
+
+        import threading
+        from kivy.clock import Clock
+
+        def run_auth():
+            try:
+                # Cek koneksi db & autentikasi via thread
+                user = UserModel.authenticate(username, password)
+                
+                # Kembalikan kontrol ke main thread
+                Clock.schedule_once(lambda dt: self.on_auth_finish(user, username, password))
+            except Exception as e:
+                Clock.schedule_once(lambda dt: self.on_auth_error(e))
+
+        threading.Thread(target=run_auth, daemon=True).start()
+
+    def on_auth_error(self, error):
+        self.ids.btn_login.disabled = False
+        self.ids.btn_login.text = "MASUK"
+        toast("Terjadi kesalahan koneksi database!")
+
+    def on_auth_finish(self, user, username, password):
+        self.ids.btn_login.disabled = False
+        self.ids.btn_login.text = "MASUK"
+
         if not user:
-            toast("Username atau Password salah!")
+            # Periksa apakah ini karena salah password atau database memang mati
+            # Jika database mati, get_db_connection() mengembalikan None
+            # Kita bisa beri toast yang lebih deskriptif
+            from config.database import get_db_connection
+            # Coba cek apakah pool database terinisialisasi
+            conn = get_db_connection()
+            if not conn:
+                toast("Gagal terhubung ke database. Periksa internet/Remote MySQL!")
+            else:
+                conn.close()
+                toast("Username atau Password salah!")
             return
 
-        # Ambil role (aman terhadap huruf besar/kecil kolom)
+        # Ambal role
         role = user.get('ROLE') or user.get('role')
         user_id = user.get('id') or user.get('ID')
         
         # --- A. LOGIN GURU ---
         if role == 'Guru':
-            guru_data = GuruModel.get_by_user_id(user_id)
+            # Ambil data guru (dijalankan di thread lain jika lambat, tapi sementara di sini)
+            # Agar aman, kita fetch secara langsung
+            try:
+                guru_data = GuruModel.get_by_user_id(user_id)
+            except Exception as e:
+                toast("Gagal mengambil data guru!")
+                return
             
             if guru_data:
                 nama_guru = guru_data.get('nama') or guru_data.get('NAMA')
@@ -167,21 +194,4 @@ class LoginScreen(Screen):
             toast("Login Orang Tua Berhasil")
             self.manager.transition.direction = 'up'
             self.manager.current = 'dashboard_ortu'
-
-    def login_as_parent(self):
-        """Login cepat untuk Orang Tua (demo tanpa password)."""
-        # Cari akun ortu pertama di database untuk demo
-        ortu_list = UserModel.get_by_role('OrangTua')
-        if ortu_list:
-            ortu = ortu_list[0]
-            set_current_user(
-                id_user=ortu['id'],
-                username=ortu['username'],
-                role='OrangTua',
-                nama_lengkap="Orang Tua Siswa"
-            )
-            toast(f"Masuk sebagai {ortu['username']}...")
-            self.manager.transition.direction = 'up'
-            self.manager.current = 'dashboard_ortu'
-        else:
-            toast("Belum ada akun Orang Tua terdaftar.")
+
